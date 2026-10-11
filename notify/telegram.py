@@ -25,18 +25,18 @@ class NotifyError(RuntimeError):
     pass
 
 
-def _creds() -> tuple[str, str]:
-    token, chat = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+def _creds(chat_id: str | None = None) -> tuple[str, str]:
+    token, chat = os.getenv("TELEGRAM_BOT_TOKEN"), chat_id or os.getenv("TELEGRAM_CHAT_ID")
     if not token or not chat:
         raise NotifyError("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set in .env "
                           "(run `python -m notify.telegram --find-chat-id`)")
     return token, chat
 
 
-def send(text: str, retries: int = 3, timeout: int = 15, backoff: float = 2.0) -> None:
+def send(text: str, retries: int = 3, timeout: int = 15, backoff: float = 2.0, chat_id: str | None = None) -> None:
     """Send a plain-text message. Retries network errors, 429 (honouring retry_after)
     and 5xx with exponential backoff; other 4xx fail immediately. Raises NotifyError."""
-    token, chat = _creds()
+    token, chat = _creds(chat_id)
     url = API.format(token=token, method="sendMessage")
     last = "unknown error"
     for attempt in range(retries):

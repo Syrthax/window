@@ -142,3 +142,10 @@ Decisions, numbers (MAE, latency) and fixes, newest last.
 - API: /health, /today (24 hours), /eval, page HTTP 200; page rendered and checked in headless Chrome.
 - Places: compared with OpenStreetMap (Nominatim). 6 of 14 were >1 km off (Himayat Sagar 4.5 km, Mrugavani 2.9 km, Sanjeevaiah 2.2 km). Replaced all with OSM coordinates; attribution added to README. Nearest place is now Public Gardens, Nampally.
 - Secrets: neither token appears in git history; .env, data/raw, weights and last_plan.json are untracked.
+
+## Telegram listener (found while preparing the demo video)
+- Problem: the bot did not reply to messages. By design `window.run` only sends; nothing listened. For a demo video the owner expected to talk to it.
+- `notify/listen.py`: long-polls `getUpdates` (25s), answers `/today` (the message), `/why` (place, window and the computed reason), `/help` and gives a hint for anything else. Only the owner's chat (`TELEGRAM_CHAT_ID`) is answered; other chats are ignored and never trigger planning (tested). Skips messages that arrived while it was off, backs off on network errors, never logs the URL (it holds the token), answers with a friendly error if planning fails.
+- Refactor: plan loading (serve `last_plan.json` while current, else re-plan from the CSV) moved from `api/main.py` into `window/today.py` so the API and the listener share it. API tests updated to patch the new module; all pass.
+- `telegram.send()` gained an optional `chat_id`. 92 tests pass (11 new for the listener).
+- Challenge page read (dev.to/challenges/hacktoberfest-week1-2026-10-05): required tags `devchallenge` and `hf26challenge`, writing quality weighted most, deadline Oct 11 2026 11:59 PM PDT. Matching partner categories: Best Use of TabPFN, Best Use of Gemma. Not claimed: Render (skipped), Sentry Agent Tracing (not built).

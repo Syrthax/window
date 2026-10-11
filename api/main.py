@@ -25,14 +25,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from agent import planner
-from agent.tools import aqi_label, now_ist
+from agent.tools import aqi_label
 from model.features import DATA
 from model.score import pm25_to_aqi, score_frame
+from window import today as today_mod
 
 load_dotenv()
 log = logging.getLogger("api")
-LAST = DATA / "last_plan.json"
 DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
 app = FastAPI(title="Window")
@@ -41,8 +40,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
 
 
 def _hourly() -> pd.DataFrame:
-    df = pd.read_csv(DATA / "hourly.csv", parse_dates=["time"])
-    return df[df.location == "hyderabad"].reset_index(drop=True)
+    return today_mod.hourly()
 
 
 def _num(x, digits: int = 1):
@@ -65,22 +63,10 @@ def curve(df: pd.DataFrame, date: str) -> list[dict]:
 
 
 def _load_plan(df: pd.DataFrame) -> dict:
-    today = str(now_ist().date())
-    if LAST.exists():
-        try:
-            cached = json.loads(LAST.read_text())
-            if cached.get("date", "") >= today:
-                return cached
-            log.info("last_plan.json is stale (%s < %s), re-planning", cached.get("date"), today)
-        except json.JSONDecodeError:
-            log.warning("last_plan.json unreadable, re-planning")
     try:
-        result = planner.plan(df)
+        return today_mod.load_plan(df)
     except ValueError as e:  # no scored daylight hours
         raise HTTPException(503, f"no plan available: {e}")
-    result["run_at"] = now_ist().isoformat(timespec="seconds")
-    LAST.write_text(json.dumps(result, indent=2, ensure_ascii=False))
-    return result
 
 
 @app.get("/today")

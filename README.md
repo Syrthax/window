@@ -65,6 +65,18 @@ For live editing run `uvicorn api.main:app --reload` and `cd web && npm run dev`
 API: `GET /today` (window, message, reason, 24h score curve), `GET /eval` (forecast table), `GET /health`.
 `/today` serves `data/last_plan.json` from the last `window.run`, or re-plans from the cached CSV if it is stale.
 
+## Make the bot answer
+
+`window.run` only sends. To let the bot reply to you, run the listener in a terminal:
+
+```bash
+python -m notify.listen     # /today = the recommendation, /why = the numbers, /help
+```
+
+It answers only the chat in `TELEGRAM_CHAT_ID` and ignores everyone else. Run one listener at a time
+(Telegram allows a single `getUpdates` consumer per bot). It serves `data/last_plan.json` while that is current and
+re-plans from cached data otherwise (a few seconds with Gemma).
+
 ## Schedule it
 
 The plan is for the day ahead (or tomorrow, if you run it after sunset), so run it early morning.
