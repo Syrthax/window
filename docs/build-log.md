@@ -52,3 +52,14 @@ Decisions, numbers (MAE, latency) and fixes, newest last.
 - Sanity check on 2026-10-12 forecast: best hour 06:00 (76), midday dip to 36 at 12:00 (apparent temp 34.7, UV 8.1), 16:00 recovers to 65.5; night hours sit at the 30 cap.
 - Design choice: dusk hours (is_day=0 from ~18:00) are capped at 30, so "best window" will always be daytime. Revisit if evening walks should count.
 - `precipitation_probability` in history is the 0 placeholder, so `score_frame` on history overstates dryness; only forecast rows carry real probabilities.
+
+## Task 5: planner (Ollama + fallback)
+- Files: `agent/tools.py` (get_forecast, get_places, best_window, pick_place), `agent/planner.py`, `agent/fallback.py`, `data/places.hyd.json` (14 spots; coordinates are approximate, written from memory and not verified against a map).
+- Split of responsibility: Python picks WHEN (best 2-hour daylight run by mean score); the model picks WHERE (from the 5 nearest places) and writes the message/reason. The validator rejects any reply whose start/end differ from the chosen window, whose place is not in the list, or whose message is over 140 chars. A 4B model cannot invent a bad time this way.
+- Gemma 3 has no native tool calling in Ollama, so the planner calls the tools itself and puts results in the prompt (structured output via Ollama's `format` JSON schema, temperature 0.2).
+- Failure handling: network/HTTP error -> 2s backoff -> one retry -> fallback; invalid/mismatched JSON -> one retry with the validation errors fed back -> fallback. Latency per stage (forecast, places, llm1, llm2, fallback) is logged and returned in `latency_ms`.
+- If no daylight hours remain today (it is evening IST), the plan rolls to tomorrow and the label says so.
+- Tests: `tests/test_planner.py` (13 tests, fake chat function: first-try success, retry on bad JSON, two bad replies, wrong window, unknown place, long message, Ollama down, rollover to tomorrow). 41 tests total pass.
+- Live runs on 2026-10-11 evening: with `gemma3:4b` missing, 404 -> retry -> fallback in ~12ms, output was a valid templated plan. With `WINDOW_MODEL=llama3.2` the live path returned a validated plan; llm1 8.4s (cold load, needed one retry), llm2 3.3s.
+- BLOCKER: `ollama pull gemma3:4b` fails with HTTP 412 "requires a newer version of Ollama". Installed is 0.23.2 (brew), latest stable is 0.40.2. Needs `brew upgrade ollama`. Until then Gemma has NOT been exercised end to end.
+- Renamed result field `source` values to "ollama"/"fallback" (it said "gemma" even for other models).

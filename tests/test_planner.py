@@ -1,0 +1,116 @@
+import json
+
+import pandas as pd
+import pytest
+import requests
+
+from agent import fallback, planner, tools
+
+NOW = pd.Timestamp("2026-10-12 05:30")
+
+
+def make_df(hours=range(6, 18), score_hot_at=12):
+    rows = []
+    for h in range(0, 24):
+        day = 1 if 6 <= h < 18 else 0
+        rows.append(dict(
+            time=pd.Timestamp("2026-10-12") + pd.Timedelta(hours=h), location="hyderabad",
+            apparent_temperature=40.0 if h == score_hot_at else (24.0 if h in (7, 8) else 30.0),
+            pm2_5=20.0, precipitation_probability=0.0, precipitation=0.0,
+            uv_index=3.0 if day else 0.0, is_day=day))
+    return pd.DataFrame(rows)
+
+
+@pytest.fixture
+def good():
+    fc = tools.get_forecast(make_df(), NOW)
+    w = tools.best_window(fc["hours"])
+    place = tools.get_places()[0]["name"]
+    return {"start": w["start"], "end": w["end"], "place": place, "activity": "easy walk",
+            "message": f"Go {w['start']}-{w['end']} at {place}.", "reason": "Cool and clean."}
+
+
+def scripted(*replies):
+    calls = []
+
+    def chat(messages):
+        calls.append(messages)
+        r = replies[min(len(calls) - 1, len(replies) - 1)]
+        if isinstance(r, Exception):
+            raise r
+        return r if isinstance(r, str) else json.dumps(r)
+    chat.calls = calls
+    return chat
+
+
+def test_best_window_picks_coolest_consecutive_hours():
+    fc = tools.get_forecast(make_df(), NOW)
+    assert tools.best_window(fc["hours"])["start"] == "07:00"
+    assert tools.best_window(fc["hours"])["end"] == "09:00"
+
+
+def test_forecast_rolls_to_tomorrow_when_day_is_over():
+    two_days = pd.concat([make_df(), make_df().assign(time=lambda d: d.time + pd.Timedelta(days=1))])
+    fc = tools.get_forecast(two_days, pd.Timestamp("2026-10-12 19:10"))
+    assert fc["day"] == "tomorrow" and fc["date"] == "2026-10-13"
+
+
+def test_forecast_raises_with_no_future_data():
+    with pytest.raises(ValueError):
+        tools.get_forecast(make_df(), pd.Timestamp("2026-10-12 19:10"))
+
+
+def test_places_sorted_by_distance():
+    km = [p["km"] for p in tools.get_places(n=14)]
+    assert km == sorted(km) and len(km) == 14
+
+
+def test_valid_reply_used_first_try(good):
+    chat = scripted(good)
+    out = planner.plan(make_df(), NOW, chat=chat, backoff=0)
+    assert out["source"] == "ollama" and out["plan"]["place"] == good["place"] and len(chat.calls) == 1
+
+
+def test_invalid_json_then_valid_retries_once(good):
+    chat = scripted("not json {", good)
+    out = planner.plan(make_df(), NOW, chat=chat, backoff=0)
+    assert out["source"] == "ollama" and len(chat.calls) == 2
+    assert "Invalid" in chat.calls[1][-1]["content"]
+
+
+def test_two_bad_replies_fall_back(good):
+    out = planner.plan(make_df(), NOW, chat=scripted("nope", "still nope"), backoff=0)
+    assert out["source"] == "fallback" and len(out["plan"]["message"]) <= 140
+
+
+def test_wrong_window_is_rejected(good):
+    bad = {**good, "start": "13:00"}
+    out = planner.plan(make_df(), NOW, chat=scripted(bad, bad), backoff=0)
+    assert out["source"] == "fallback" and out["plan"]["start"] == "07:00"
+
+
+def test_unknown_place_is_rejected(good):
+    bad = {**good, "place": "Narnia"}
+    assert planner.plan(make_df(), NOW, chat=scripted(bad, bad), backoff=0)["source"] == "fallback"
+
+
+def test_long_message_is_rejected(good):
+    bad = {**good, "message": "x" * 141}
+    assert planner.plan(make_df(), NOW, chat=scripted(bad, bad), backoff=0)["source"] == "fallback"
+
+
+def test_ollama_down_falls_back_after_retry():
+    chat = scripted(requests.ConnectionError("refused"))
+    out = planner.plan(make_df(), NOW, chat=chat, backoff=0)
+    assert out["source"] == "fallback" and len(chat.calls) == 2
+
+
+def test_latency_logged_per_stage(good):
+    out = planner.plan(make_df(), NOW, chat=scripted(good), backoff=0)
+    assert {"forecast", "places", "llm1"} <= set(out["latency_ms"])
+
+
+def test_fallback_message_within_limit_for_long_names():
+    w = tools.best_window(tools.get_forecast(make_df(), NOW)["hours"])
+    msg = fallback.build(w, [{"name": "N" * 200, "shade": True, "km": 1}], "today")["message"]
+    assert len(msg) <= 140
