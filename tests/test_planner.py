@@ -143,3 +143,28 @@ def test_cautious_message_accepted(good):
     msg = f"Best of a smoggy day: {w['start']}-{w['end']} at {good['place']}. Air is poor; sensitive people limit time."
     out = planner.plan(smoggy_df(), NOW, chat=scripted({**good, "message": msg}), backoff=0)
     assert out["source"] == "ollama" and out["plan"]["message"] == msg
+
+
+def test_field_names_in_message_are_rejected(good):
+    bad = {**good, "message": "Go at 07:00-09:00, the max_aqi is low."}
+    out = planner.plan(make_df(), NOW, chat=scripted(bad, bad), backoff=0)
+    assert out["source"] == "fallback"
+
+
+def test_reason_is_computed_not_taken_from_model(good):
+    out = planner.plan(make_df(), NOW, chat=scripted({**good, "reason": "lowest max_aqi, trust me"}), backoff=0)
+    assert out["source"] == "ollama"
+    r = out["plan"]["reason"]
+    assert r.startswith("Highest outdoor score of the day") and "trust me" not in r and "max_aqi" not in r
+    assert "feels like" in r and "on average" in r
+
+
+def test_fallback_reason_matches_model_path_reason(good):
+    a = planner.plan(make_df(), NOW, chat=scripted(good), backoff=0)["plan"]["reason"]
+    b = planner.plan(make_df(), NOW, chat=scripted("x", "y"), backoff=0)["plan"]["reason"]
+    assert a == b
+
+
+def test_activity_must_be_short(good):
+    bad = {**good, "activity": f"{good['place']}, 07:00-09:00"}
+    assert planner.plan(make_df(), NOW, chat=scripted(bad, bad), backoff=0)["source"] == "fallback"

@@ -125,6 +125,16 @@ def best_window(hours: list[dict], length: int = 2) -> dict:
     raise ValueError("no hours to build a window from")
 
 
+def explain_window(window: dict, hours: list[dict]) -> str:
+    """Why this window, computed from the data (a small model cannot be trusted to compare hours)."""
+    n = len(hours)
+    avg = lambda k: sum(h[k] for h in hours) / n
+    return (f"Highest outdoor score of the day ({window['score']:.0f}/100): feels like {window['avg_feels_c']:.0f}C "
+            f"vs {avg('feels_c'):.0f}C on average across daylight, AQI up to {window['max_aqi']} "
+            f"({window['air']}) vs {avg('aqi'):.0f} on average, UV up to {window['max_uv']}, "
+            f"rain chance up to {window['max_rain_pct']:.0f}%.")
+
+
 def pick_place(places: list[dict], window: dict) -> dict:
     """Nearest place; prefer shaded ones when it is hot or the UV is high."""
     if window["avg_feels_c"] >= 30 or window["max_uv"] >= 6:

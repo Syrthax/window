@@ -1,0 +1,64 @@
+:root {
+  color-scheme: light;
+  --page: #f6f5f2;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #7a7974;
+  --grid: #e6e5e1;
+  --series: #2a78d6;
+  --band: rgba(11, 11, 11, 0.07);
+  --warn-bg: #fff3d6;
+  --warn-ink: #6b4a00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #121211;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --ink-3: #9a998f;
+    --grid: #2e2e2c;
+    --series: #3987e5;
+    --band: rgba(240, 239, 236, 0.1);
+    --warn-bg: #3a2c05;
+    --warn-ink: #f3d27a;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); margin: 0; }
+.meta { color: var(--ink-3); font-size: 13px; margin: 2px 0 20px; }
+.nudge { font-size: clamp(22px, 5.5vw, 30px); line-height: 1.25; font-weight: 600; margin: 0 0 14px; text-wrap: balance; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.chip { background: var(--surface); border: 1px solid var(--grid); border-radius: 999px; padding: 4px 12px; font-size: 14px; color: var(--ink-2); }
+.chip.warn { background: var(--warn-bg); color: var(--warn-ink); border-color: transparent; font-weight: 600; }
+.card { background: var(--surface); border: 1px solid var(--grid); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.card h2 { font-size: 15px; margin: 0 0 2px; }
+.sub { color: var(--ink-3); font-size: 13px; margin: 0 0 8px; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.chart text { fill: var(--ink-3); font-size: 11px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--grid); border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.5; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); white-space: nowrap; transform: translate(-50%, -100%); }
+.tip b { font-size: 15px; display: block; }
+.tip .t { color: var(--ink-3); }
+.why { margin: 0; color: var(--ink-2); }
+button.link { background: none; border: 0; color: var(--series); font: inherit; font-size: 14px; cursor: pointer; padding: 0; margin-top: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-3); font-weight: 500; }
+tr.best td { font-weight: 600; background: var(--band); }
+.note { color: var(--ink-3); font-size: 12px; margin: 8px 0 0; }
+.err { color: var(--warn-ink); background: var(--warn-bg); padding: 12px 16px; border-radius: 8px; }
+@media (max-width: 560px) {
+  /* the SVG scales with the viewBox; keep axis text near 10px on phones */
+  .chart text { font-size: 20px; }
+}

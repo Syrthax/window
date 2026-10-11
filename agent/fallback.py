@@ -1,12 +1,12 @@
 """Templated nudge used when Ollama is unreachable or returns invalid JSON."""
 from __future__ import annotations
 
-from agent.tools import CAUTION_WORDS, pick_place
+from agent.tools import CAUTION_WORDS, explain_window, pick_place
 
 MAX_MESSAGE = 140
 
 
-def build(window: dict, places: list[dict], day: str) -> dict:
+def build(window: dict, places: list[dict], day: str, hours: list[dict] | None = None) -> dict:
     place = pick_place(places, window)
     hot = window["avg_feels_c"] >= 30 or window["max_uv"] >= 6
     activity = "short shaded walk" if hot else "walk"
@@ -25,6 +25,6 @@ def build(window: dict, places: list[dict], day: str) -> dict:
     return {
         "start": window["start"], "end": window["end"], "place": place["name"], "activity": activity,
         "message": message,
-        "reason": f"Highest outdoor score of the day ({window['score']}/100): feels {window['avg_feels_c']:.0f}C, "
-                  f"AQI up to {window['max_aqi']}, UV up to {window['max_uv']}, rain chance up to {window['max_rain_pct']:.0f}%.",
+        "reason": explain_window(window, hours) if hours else
+                  f"Highest outdoor score of the day ({window['score']}/100).",
     }

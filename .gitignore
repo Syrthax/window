@@ -5,3 +5,4 @@ data/raw/
 .env
 node_modules/
 data/last_plan.json
+web/dist/

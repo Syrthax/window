@@ -54,6 +54,17 @@ The python.org Python ships without CA certificates for `urllib`. TabPFN's licen
 uses `urllib` and reports the failure as "gated model". The code points `SSL_CERT_FILE` at
 certifi automatically; to fix it system-wide run `/Applications/Python 3.x/Install Certificates.command`.
 
+## Demo page
+
+```bash
+cd web && npm install && npm run build && cd ..
+uvicorn api.main:app                  # http://127.0.0.1:8000  (serves the built page + API)
+```
+
+For live editing run `uvicorn api.main:app --reload` and `cd web && npm run dev` (page on :5173, proxies the API).
+API: `GET /today` (window, message, reason, 24h score curve), `GET /eval` (forecast table), `GET /health`.
+`/today` serves `data/last_plan.json` from the last `window.run`, or re-plans from the cached CSV if it is stale.
+
 ## Schedule it
 
 The plan is for the day ahead (or tomorrow, if you run it after sunset), so run it early morning.

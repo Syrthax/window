@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from contextlib import contextmanager
 from typing import Callable
@@ -23,7 +24,7 @@ from agent import fallback, tools
 
 log = logging.getLogger("planner")
 
-KEYS = ("start", "end", "place", "activity", "message", "reason")
+KEYS = ("start", "end", "place", "activity", "message")  # `reason` is computed in Python
 SCHEMA = {
     "type": "object",
     "properties": {k: {"type": "string"} for k in KEYS},
@@ -73,12 +74,11 @@ def build_messages(forecast: dict, window: dict, places: list[dict]) -> list[dic
         f"DATA:\n{json.dumps(data)}\n\n"
         f"The window {window['start']}-{window['end']} is already chosen; copy start and end exactly. {tone}"
         "Pick ONE place, copying its name exactly from places (prefer shade when hot or high UV). "
-        "activity: 2-4 words. "
+        "activity: 1-4 words naming what to do, e.g. 'easy walk', 'light jog', 'shaded stroll', 'lakeside walk'; no times or place names. "
         f"message: ONE short sentence of about 100 characters (hard limit 140), must say the day ('{forecast['day']}'), the time range and the place; "
         "use plain words (say 'feels like 27C', never field names like feels_c or aqi, and do not mention the score). "
         "Describe air quality only with the 'air' label from the data (e.g. 'air is moderate'); never call it good, clean or low-pollution unless the label is 'good'. "
-        "reason: one sentence on why this window beats the rest of the day, comparing chosen_window with the other hours "
-        "(heat, air quality, UV, rain) using numbers from the data, in plain words with no field names, and consistent with the 'air' label."
+        "Do not write a reason."
     )
     return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
 
@@ -92,8 +92,14 @@ def validate(obj: object, window: dict, place_names: set[str]) -> list[str]:
         return errs
     if (obj["start"], obj["end"]) != (window["start"], window["end"]):
         errs.append(f"start/end must be exactly {window['start']} and {window['end']}")
+    act = obj["activity"]
+    if len(act.split()) > 4 or any(ch.isdigit() for ch in act) or any(n.lower() in act.lower() for n in place_names):
+        errs.append("activity must be 1-4 words naming what to do (e.g. 'easy walk'), with no times or place names")
     if obj["place"] not in place_names:
         errs.append(f"place must be one of {sorted(place_names)}")
+    leaked = [w for k in ("message",) for w in re.findall(r"\b[a-z]+_[a-z_]+\b", obj[k])]
+    if leaked:
+        errs.append(f"do not use field names ({', '.join(sorted(set(leaked)))}); write plain words")
     caution = window.get("caution", [])
     if caution and not obj["message"].lower().startswith("best of a"):
         errs.append("message must start with 'Best of a ...' because conditions are poor")
@@ -133,6 +139,7 @@ def plan(df=None, now=None, chat: Callable[[list[dict]], str] | None = None, bac
             obj, errs = None, ["response was not valid JSON"]
         if not errs:
             chosen = {k: obj[k].strip() for k in KEYS}
+            chosen["reason"] = tools.explain_window(window, forecast["hours"])
             break
         log.warning("invalid plan (attempt %d): %s", attempt, "; ".join(errs))
         messages = messages + [{"role": "assistant", "content": raw},
@@ -143,8 +150,8 @@ def plan(df=None, now=None, chat: Callable[[list[dict]], str] | None = None, bac
         source = "fallback"
         log.warning("using templated fallback")
         with stage("fallback", timings):
-            chosen = fallback.build(window, places, forecast["day"])
-    return {"plan": chosen, "source": source, "day": forecast["day"], "window": window,
+            chosen = fallback.build(window, places, forecast["day"], forecast["hours"])
+    return {"plan": chosen, "source": source, "day": forecast["day"], "date": forecast["date"], "window": window,
             "latency_ms": timings, "model": os.getenv("WINDOW_MODEL", "gemma3:4b")}
 
 
