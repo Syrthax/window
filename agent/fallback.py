@@ -11,7 +11,7 @@ def build(window: dict, places: list[dict], day: str) -> dict:
     hot = window["avg_feels_c"] >= 30 or window["max_uv"] >= 6
     activity = "short shaded walk" if hot else "walk"
     when = day.capitalize()
-    tail = f" at {place['name']}. Feels {window['avg_feels_c']:.0f}C, AQI {window['max_aqi']}, rain {window['max_rain_pct']:.0f}%."
+    tail = f" at {place['name']}. Feels {window['avg_feels_c']:.0f}C, air {window['air']} (AQI {window['max_aqi']}), rain {window['max_rain_pct']:.0f}%."
     message = f"{when} {window['start']}-{window['end']}{tail}"
     if len(message) > MAX_MESSAGE:
         message = message[:MAX_MESSAGE - 1].rstrip() + "…"

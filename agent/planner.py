@@ -58,15 +58,19 @@ def stage(name: str, timings: dict):
 def build_messages(forecast: dict, window: dict, places: list[dict]) -> list[dict]:
     data = {
         "day": forecast["day"], "chosen_window": window,
-        "hours": [{k: h[k] for k in ("time", "score", "feels_c", "aqi", "rain_pct", "uv")} for h in forecast["hours"]],
+        "hours": [{k: h[k] for k in ("time", "score", "feels_c", "aqi", "air", "rain_pct", "uv")} for h in forecast["hours"]],
         "places": [{k: p[k] for k in ("name", "type", "shade", "km")} for p in places],
     }
     user = (
         f"DATA:\n{json.dumps(data)}\n\n"
         f"The window {window['start']}-{window['end']} is already chosen; copy start and end exactly. "
         "Pick ONE place, copying its name exactly from places (prefer shade when hot or high UV). "
-        "activity: 2-4 words. message: friendly, at most 140 characters, mentions the time and place. "
-        "reason: one sentence citing numbers from the data."
+        "activity: 2-4 words. "
+        f"message: ONE short sentence of about 100 characters (hard limit 140), must say the day ('{forecast['day']}'), the time range and the place; "
+        "use plain words (say 'feels like 27C', never field names like feels_c or aqi, and do not mention the score). "
+        "Describe air quality only with the 'air' label from the data (e.g. 'air is moderate'); never call it good, clean or low-pollution unless the label is 'good'. "
+        "reason: one sentence on why this window beats the rest of the day, comparing chosen_window with the other hours "
+        "(heat, air quality, UV, rain) using numbers from the data, in plain words with no field names, and consistent with the 'air' label."
     )
     return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
 

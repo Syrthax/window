@@ -22,6 +22,15 @@ TZ = "Asia/Kolkata"
 PLACES = DATA / "places.hyd.json"
 
 
+def aqi_label(aqi: int) -> str:
+    """EPA US AQI category, so the model never has to interpret a raw number."""
+    for limit, label in ((50, "good"), (100, "moderate"), (150, "unhealthy for sensitive groups"),
+                         (200, "unhealthy"), (300, "very unhealthy")):
+        if aqi <= limit:
+            return label
+    return "hazardous"
+
+
 def home() -> tuple[float, float]:
     """Where 'nearby' is measured from (central Hyderabad unless overridden in .env)."""
     return float(os.getenv("WINDOW_LAT", 17.3850)), float(os.getenv("WINDOW_LON", 78.4867))
@@ -68,6 +77,7 @@ def get_forecast(df: pd.DataFrame | None = None, now: pd.Timestamp | None = None
     hours = [{
         "hour": int(r.time.hour), "time": r.time.strftime("%H:%M"), "score": float(r.score),
         "feels_c": round(float(r.apparent_temperature), 1), "aqi": pm25_to_aqi(float(r.pm2_5)),
+        "air": aqi_label(pm25_to_aqi(float(r.pm2_5))),
         "rain_pct": float(r.precipitation_probability), "uv": round(float(r.uv_index), 1),
     } for r in rows.itertuples()]
     return {"day": label, "date": str(rows.time.iloc[0].date()), "hours": hours}
@@ -90,7 +100,7 @@ def best_window(hours: list[dict], length: int = 2) -> dict:
             return {
                 "start": f"{run[0]['hour']:02d}:00", "end": f"{(run[-1]['hour'] + 1) % 24:02d}:00",
                 "score": round(mean, 1), "avg_feels_c": round(sum(h["feels_c"] for h in run) / n, 1),
-                "max_aqi": max(h["aqi"] for h in run), "max_rain_pct": max(h["rain_pct"] for h in run),
+                "max_aqi": max(h["aqi"] for h in run), "air": aqi_label(max(h["aqi"] for h in run)), "max_rain_pct": max(h["rain_pct"] for h in run),
                 "max_uv": max(h["uv"] for h in run),
             }
     raise ValueError("no hours to build a window from")

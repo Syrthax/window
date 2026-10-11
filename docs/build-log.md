@@ -63,3 +63,13 @@ Decisions, numbers (MAE, latency) and fixes, newest last.
 - Live runs on 2026-10-11 evening: with `gemma3:4b` missing, 404 -> retry -> fallback in ~12ms, output was a valid templated plan. With `WINDOW_MODEL=llama3.2` the live path returned a validated plan; llm1 8.4s (cold load, needed one retry), llm2 3.3s.
 - BLOCKER: `ollama pull gemma3:4b` fails with HTTP 412 "requires a newer version of Ollama". Installed is 0.23.2 (brew), latest stable is 0.40.2. Needs `brew upgrade ollama`. Until then Gemma has NOT been exercised end to end.
 - Renamed result field `source` values to "ollama"/"fallback" (it said "gemma" even for other models).
+
+### Task 5 follow-up: Gemma end to end
+- Upgraded Ollama 0.23.2 -> 0.40.3 (`brew upgrade ollama`), pulled `gemma3:4b` (3.4 GB). `gemma3:4b` now runs the planner for real.
+- Latency (M-series CPU/GPU via Ollama): first call 7.6s (cold load), warm 3.5-5.5s per call; forecast+places stage under 30 ms.
+- Prompt iterations, each fixing an observed failure:
+  1. First version: messages leaked field names ("feels_c is 26.3") and never said the plan was for tomorrow. Added: must state the day, plain words, no score.
+  2. Model called AQI 129 "good" / "low air pollution" (small models do not know AQI categories). Fixed by adding an `air` label (EPA category) to every hour and window and telling the model to use only that label.
+  3. That change made messages long: 231 then 144 chars, both rejected, so 3/3 runs fell back. Fixed by asking for "about 100 characters (hard limit 140)"; the 140 validator is unchanged. Afterwards 3 of 4 runs passed (one needed the fallback).
+- The validator did its job: wrong-length output never reached the user; the fallback produced a correct templated plan every time.
+- Honest note for the write-up: tomorrow's best window (06:00-08:00) still has AQI ~129 ("unhealthy for sensitive groups"); the message says so rather than hiding it.
