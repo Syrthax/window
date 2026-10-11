@@ -91,6 +91,7 @@ Exit codes: `0` sent (or dry run), `2` plan made but Telegram failed (the messag
 ## Data note
 
 Air quality is CAMS model output, not ground-station readings.
+Place coordinates are from OpenStreetMap (© OpenStreetMap contributors, ODbL), checked 2026-10-11.
 
 ## Status
 

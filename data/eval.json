@@ -1,75 +1,301 @@
 {
-  "train_days": null,
   "test_days": 14,
+  "val_days": 14,
+  "selected": {
+    "name": "v3_delta_ext_allhist",
+    "extended": true,
+    "delta": true,
+    "keep_missing_weather": true
+  },
+  "selection": "lowest mean validation MAE across horizons; stacking weights fit on validation",
   "results": [
     {
       "horizon_h": 1,
-      "n_train": 1454,
+      "n_val": 336,
       "n_test": 336,
-      "fit_predict_s": 9.3,
-      "tabpfn": {
-        "mae": 2.369,
-        "rmse": 3.469
+      "variants": {
+        "v0_level": {
+          "val": {
+            "mae": 2.007,
+            "rmse": 3.203
+          },
+          "test": {
+            "mae": 2.55,
+            "rmse": 3.68
+          },
+          "n_train": 1456,
+          "fit_predict_s": 33.9
+        },
+        "v1_delta": {
+          "val": {
+            "mae": 1.813,
+            "rmse": 3.132
+          },
+          "test": {
+            "mae": 2.347,
+            "rmse": 3.266
+          },
+          "n_train": 1456,
+          "fit_predict_s": 28.3
+        },
+        "v2_delta_ext": {
+          "val": {
+            "mae": 1.684,
+            "rmse": 3.046
+          },
+          "test": {
+            "mae": 2.192,
+            "rmse": 3.162
+          },
+          "n_train": 1455,
+          "fit_predict_s": 34.5
+        },
+        "v3_delta_ext_allhist": {
+          "val": {
+            "mae": 1.669,
+            "rmse": 2.959
+          },
+          "test": {
+            "mae": 2.053,
+            "rmse": 3.005
+          },
+          "n_train": 1844,
+          "fit_predict_s": 62.6
+        }
       },
       "persistence": {
-        "mae": 2.485,
-        "rmse": 3.669
+        "mae": 2.464,
+        "rmse": 3.651
       },
       "yesterday": {
-        "mae": 7.684,
-        "rmse": 10.018
+        "mae": 7.679,
+        "rmse": 10.015
       },
       "climatology": {
-        "mae": 21.941,
-        "rmse": 24.702
+        "mae": 21.991,
+        "rmse": 24.716
       },
-      "cams": null
+      "cams": null,
+      "weights": {
+        "model": 0.9,
+        "persistence": 0.1,
+        "yesterday": 0.0
+      },
+      "tabpfn": {
+        "mae": 2.053,
+        "rmse": 3.005
+      },
+      "final": {
+        "mae": 1.94,
+        "rmse": 2.919
+      },
+      "val": {
+        "final": {
+          "mae": 1.657,
+          "rmse": 2.95
+        },
+        "persistence": {
+          "mae": 2.49,
+          "rmse": 3.85
+        },
+        "yesterday": {
+          "mae": 9.025,
+          "rmse": 11.704
+        }
+      },
+      "n_train": 1844
     },
     {
       "horizon_h": 3,
-      "n_train": 1454,
+      "n_val": 336,
       "n_test": 336,
-      "fit_predict_s": 9.3,
-      "tabpfn": {
-        "mae": 7.608,
-        "rmse": 9.81
+      "variants": {
+        "v0_level": {
+          "val": {
+            "mae": 5.11,
+            "rmse": 7.15
+          },
+          "test": {
+            "mae": 7.494,
+            "rmse": 9.658
+          },
+          "n_train": 1456,
+          "fit_predict_s": 28.0
+        },
+        "v1_delta": {
+          "val": {
+            "mae": 5.231,
+            "rmse": 7.44
+          },
+          "test": {
+            "mae": 7.532,
+            "rmse": 9.842
+          },
+          "n_train": 1456,
+          "fit_predict_s": 28.2
+        },
+        "v2_delta_ext": {
+          "val": {
+            "mae": 4.477,
+            "rmse": 6.489
+          },
+          "test": {
+            "mae": 6.489,
+            "rmse": 8.508
+          },
+          "n_train": 1453,
+          "fit_predict_s": 36.2
+        },
+        "v3_delta_ext_allhist": {
+          "val": {
+            "mae": 4.245,
+            "rmse": 6.094
+          },
+          "test": {
+            "mae": 6.445,
+            "rmse": 8.539
+          },
+          "n_train": 1844,
+          "fit_predict_s": 50.0
+        }
       },
       "persistence": {
-        "mae": 6.479,
-        "rmse": 8.425
+        "mae": 6.469,
+        "rmse": 8.421
       },
       "yesterday": {
-        "mae": 7.684,
-        "rmse": 10.018
+        "mae": 7.679,
+        "rmse": 10.015
       },
       "climatology": {
-        "mae": 21.941,
-        "rmse": 24.702
+        "mae": 21.991,
+        "rmse": 24.716
       },
-      "cams": null
+      "cams": null,
+      "weights": {
+        "model": 0.9,
+        "persistence": 0.1,
+        "yesterday": 0.0
+      },
+      "tabpfn": {
+        "mae": 6.445,
+        "rmse": 8.539
+      },
+      "final": {
+        "mae": 5.884,
+        "rmse": 7.875
+      },
+      "val": {
+        "final": {
+          "mae": 4.216,
+          "rmse": 6.065
+        },
+        "persistence": {
+          "mae": 6.191,
+          "rmse": 8.641
+        },
+        "yesterday": {
+          "mae": 9.025,
+          "rmse": 11.704
+        }
+      },
+      "n_train": 1844
     },
     {
       "horizon_h": 6,
-      "n_train": 1454,
+      "n_val": 336,
       "n_test": 336,
-      "fit_predict_s": 9.5,
-      "tabpfn": {
-        "mae": 9.455,
-        "rmse": 12.463
+      "variants": {
+        "v0_level": {
+          "val": {
+            "mae": 6.5,
+            "rmse": 8.674
+          },
+          "test": {
+            "mae": 9.438,
+            "rmse": 12.455
+          },
+          "n_train": 1456,
+          "fit_predict_s": 29.4
+        },
+        "v1_delta": {
+          "val": {
+            "mae": 6.399,
+            "rmse": 8.506
+          },
+          "test": {
+            "mae": 9.788,
+            "rmse": 12.776
+          },
+          "n_train": 1456,
+          "fit_predict_s": 27.7
+        },
+        "v2_delta_ext": {
+          "val": {
+            "mae": 5.981,
+            "rmse": 7.82
+          },
+          "test": {
+            "mae": 9.464,
+            "rmse": 12.527
+          },
+          "n_train": 1450,
+          "fit_predict_s": 34.5
+        },
+        "v3_delta_ext_allhist": {
+          "val": {
+            "mae": 5.936,
+            "rmse": 7.808
+          },
+          "test": {
+            "mae": 9.399,
+            "rmse": 12.638
+          },
+          "n_train": 1844,
+          "fit_predict_s": 43.5
+        }
       },
       "persistence": {
-        "mae": 10.785,
-        "rmse": 13.114
+        "mae": 10.775,
+        "rmse": 13.113
       },
       "yesterday": {
-        "mae": 7.684,
-        "rmse": 10.018
+        "mae": 7.679,
+        "rmse": 10.015
       },
       "climatology": {
-        "mae": 21.941,
-        "rmse": 24.702
+        "mae": 21.991,
+        "rmse": 24.716
       },
-      "cams": null
+      "cams": null,
+      "weights": {
+        "model": 1.0,
+        "persistence": 0.0,
+        "yesterday": 0.0
+      },
+      "tabpfn": {
+        "mae": 9.399,
+        "rmse": 12.638
+      },
+      "final": {
+        "mae": 9.399,
+        "rmse": 12.638
+      },
+      "val": {
+        "final": {
+          "mae": 5.936,
+          "rmse": 7.808
+        },
+        "persistence": {
+          "mae": 9.743,
+          "rmse": 12.597
+        },
+        "yesterday": {
+          "mae": 9.025,
+          "rmse": 11.704
+        }
+      },
+      "n_train": 1844
     }
   ]
 }

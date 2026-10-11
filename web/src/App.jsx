@@ -88,23 +88,29 @@ function HourTable({ curve, win }) {
 }
 
 function Accuracy({ ev }) {
-  if (!ev) return null;
+  if (!ev || !ev.results) return null;
+  const best = (r) => Math.min(r.final.mae, r.persistence.mae, r.yesterday.mae);
   return (
     <div className="card">
       <h2>How good is the PM2.5 forecast?</h2>
-      <p className="sub">TabPFN vs simple baselines, mean absolute error in µg/m³ over the last {ev.test_days} days (lower is better).</p>
+      <p className="sub">Mean absolute error in µg/m³ on the last {ev.test_days} days, scored once after choosing the model
+        on the {ev.val_days} days before (lower is better).</p>
       <table>
-        <thead><tr><th>Horizon</th><th>TabPFN</th><th>Persistence</th><th>Same hour yesterday</th></tr></thead>
+        <thead><tr><th>Horizon</th><th>Window</th><th>TabPFN alone</th><th>Persistence</th><th>Yesterday</th></tr></thead>
         <tbody>
           {ev.results.map((r) => (
             <tr key={r.horizon_h}>
-              <td>+{r.horizon_h}h</td><td>{r.tabpfn.mae}</td><td>{r.persistence.mae}</td><td>{r.yesterday.mae}</td>
+              <td>+{r.horizon_h}h</td>
+              {[r.final, r.tabpfn, r.persistence, r.yesterday].map((m, i) => (
+                <td key={i} style={m.mae === best(r) && i !== 1 ? { fontWeight: 600 } : undefined}>{m.mae}</td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="note">Mixed result, reported as is: TabPFN wins at +1h and +6h against persistence, loses at +3h. No CAMS-forecast
-        baseline: Open-Meteo does not expose past forecasts. Air quality is CAMS model output, not station readings.</p>
+      <p className="note">Window = TabPFN ({ev.selected?.name}) stacked with persistence and same-hour-yesterday, weights fit on
+        validation. No CAMS-forecast baseline: Open-Meteo does not expose past forecasts. Air quality is CAMS model output,
+        not station readings.</p>
     </div>
   );
 }

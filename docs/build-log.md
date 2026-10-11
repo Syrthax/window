@@ -97,3 +97,48 @@ Decisions, numbers (MAE, latency) and fixes, newest last.
   3. `activity` came back as the whole message, then as "Indira Park, 06:00-08:00". Validator now requires 1-4 words, no digits, no place name; prompt gives examples. Live result: "shaded stroll".
 - Gotcha: a long-running uvicorn keeps old code; restart (or use `--reload`) after changing the planner.
 - 62 tests pass (api: cached/stale/503/eval/health; planner: tone, activity, computed reason).
+
+## Forecast improvement + full verification (2026-10-11 evening)
+
+### What changed in the model (standard techniques, chosen without touching the test set)
+- Protocol: windows on target time `[train | validation 14d | test 14d]`. Every variant is fit on train and scored on validation; the variant with the lowest mean validation MAE wins; per-horizon stacking weights (convex, grid step 0.05) over TabPFN, persistence and same-hour-yesterday are fit on validation; only then refit on train+validation and score the test window once. Leakage tests confirm no future pm2_5 enters any feature for any variant/horizon.
+- Variants (`model/features.py`):
+  - v0_level: the original model.
+  - v1_delta: learn y(t+h) - y(t) instead of the level.
+  - v2_delta_ext: + daily cycle (value at the same hour 1 and 2 days before the target), trend (1h/3h differences), 24h volatility, pm10/ozone now, current weather and its change to t+h, cyclical hour.
+  - v3_delta_ext_allhist: + keep the first ~19 days that have no weather (TabPFN handles NaN natively): 1844 training rows instead of 1456.
+
+| Variant | +1h val MAE | +3h val MAE | +6h val MAE | mean |
+|---|---|---|---|---|
+| v0_level | 2.007 | 5.110 | 6.500 | 4.539 |
+| v1_delta | 1.813 | 5.231 | 6.399 | 4.481 |
+| v2_delta_ext | 1.684 | 4.477 | 5.981 | 4.047 |
+| v3_delta_ext_allhist | 1.669 | 4.245 | 5.936 | 3.950 |
+
+- Selected v3. Stacking weights: +1h and +3h {model 0.9, persistence 0.1}; +6h {model 1.0}.
+- Test (last 14 days, scored once):
+
+| Horizon | Final (stacked) | TabPFN v3 | TabPFN v0 (original) | Persistence | Yesterday | Climatology |
+|---|---|---|---|---|---|---|
+| +1h MAE | **1.940** | 2.053 | 2.550 | 2.464 | 7.679 | 21.991 |
+| +3h MAE | **5.884** | 6.445 | 7.494 | 6.469 | 7.679 | 21.991 |
+| +6h MAE | 9.399 | 9.399 | 9.438 | 10.775 | **7.679** | 21.991 |
+| +1h RMSE | **2.919** | 3.005 | 3.680 | 3.651 | 10.015 | 24.716 |
+| +3h RMSE | **7.875** | 8.539 | 9.658 | 8.421 | 10.015 | 24.716 |
+| +6h RMSE | 12.638 | 12.638 | 12.455 | 13.113 | **10.015** | 24.716 |
+
+- Versus the original model: MAE -24% at +1h, -21% at +3h, about the same at +6h. Versus persistence: -21%, -9%, -13%. The +3h loss to persistence is gone.
+- Still honest: at +6h, same-hour-yesterday wins on the test fortnight (7.68 vs 9.40). On validation it was the worst option at +6h (9.03 vs the model's 5.94), so the stack gave it zero weight. It is a regime shift between the two fortnights, not a bug, and re-tuning on test would be peeking. A rolling-origin backtest over more weeks would settle which is better at +6h; there is not enough history (92 days) to do that convincingly yet.
+- Note the test numbers moved slightly vs Task 3 for the same models (e.g. persistence +1h 2.485 -> 2.464) because ingest ran again and the windows shifted by a few hours.
+- Production (`model/predict.py`) now reads the selected variant and weights from `data/eval.json`; without it, falls back to v0 + TabPFN alone. Cost: nowcast stage 85s (3 fits on 1844 rows) vs 42s before; full run ~2 min.
+
+### Verification (all on 2026-10-11 ~19:50-20:00 IST)
+- Tests: 81 pass (leakage per variant/horizon, stacking, config fallback, planner, notifier, API, score).
+- Ingest + validate: 2256 rows, 0 missing hours, exit 0.
+- Live `python -m window.run`: exit 0, Telegram delivered (110 chars), Gemma output validated first try.
+- `--offline --dry-run`: rebuilt from raw cache, exit 0.
+- Ollama unreachable (`OLLAMA_HOST=http://127.0.0.1:9`): retry after 2s, then templated fallback, exit 0.
+- Telegram rejects (bad chat id): message printed, error logged, exit 2, token absent from logs.
+- API: /health, /today (24 hours), /eval, page HTTP 200; page rendered and checked in headless Chrome.
+- Places: compared with OpenStreetMap (Nominatim). 6 of 14 were >1 km off (Himayat Sagar 4.5 km, Mrugavani 2.9 km, Sanjeevaiah 2.2 km). Replaced all with OSM coordinates; attribution added to README. Nearest place is now Public Gardens, Nampally.
+- Secrets: neither token appears in git history; .env, data/raw, weights and last_plan.json are untracked.
