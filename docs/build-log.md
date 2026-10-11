@@ -44,3 +44,11 @@ Decisions, numbers (MAE, latency) and fixes, newest last.
 - Same "yesterday"/climatology numbers across horizons are expected: the 336 test targets are identical for every h and those baselines do not depend on issue time.
 - Same run with a 30-day train window: MAE 2.694 / 7.563 / 10.478 at +1/+3/+6h, so more history helps at 1h and 6h.
 - Read: TabPFN beats persistence at +1h (-5% MAE) and +6h (-12%), loses at +3h (+17%), and loses to "yesterday" at +6h (9.46 vs 7.68). Not a clear win.
+
+## Task 4: outdoor score
+- `model/score.py`: deterministic 0-100 score = 100 minus penalties (apparent temp, AQI, rain, UV) with hard caps (night 30, AQI>150 -> 15, heat index>40 -> 10, rain >=0.5 mm/h -> 20). All constants and the reasoning are in the module docstring. `components()` returns each penalty and cap so the planner can explain a number; `score_hour()` and `score_frame()` wrap it.
+- PM2.5 -> AQI uses the EPA 2024 breakpoints (self-computed, since forecast pm2_5 is what we predict; Open-Meteo's `us_aqi` is not used for scoring).
+- `tests/test_score.py`: 28 tests pass (night, rain prob and actual rain, AQI 150/151 boundary, heat index 40/41 boundary, cold, UV cap, monotonicity, missing inputs).
+- Sanity check on 2026-10-12 forecast: best hour 06:00 (76), midday dip to 36 at 12:00 (apparent temp 34.7, UV 8.1), 16:00 recovers to 65.5; night hours sit at the 30 cap.
+- Design choice: dusk hours (is_day=0 from ~18:00) are capped at 30, so "best window" will always be daytime. Revisit if evening walks should count.
+- `precipitation_probability` in history is the 0 placeholder, so `score_frame` on history overstates dryness; only forecast rows carry real probabilities.
