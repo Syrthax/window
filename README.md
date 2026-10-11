@@ -68,16 +68,26 @@ API: `GET /today` (window, message, reason, 24h score curve), `GET /eval` (forec
 ## Schedule it
 
 The plan is for the day ahead (or tomorrow, if you run it after sunset), so run it early morning.
-Ollama must be running (`brew services start ollama`).
 
-**macOS / Linux (cron)**: `crontab -e`, then add (05:30 IST daily; adjust the path):
+**macOS (launchd, recommended)**: one command installs a daily 05:30 job (system time zone). Unlike cron,
+launchd runs a missed job when the Mac wakes. The wrapper starts Ollama if it is not running.
+
+```bash
+scripts/install_launchd.sh            # install; log in data/run.log
+launchctl kickstart -k gui/$(id -u)/com.window.daily   # run it now to test
+scripts/install_launchd.sh --remove   # uninstall
+```
+
+A Mac that is fully asleep at 05:30 runs the job on wake; to wake it for the job use
+`sudo pmset repeat wakeorpoweron MTWRFSU 05:25:00`.
+
+**Linux (cron)**: Ollama must already be running (`systemctl enable --now ollama`). `crontab -e`, then add (05:30 daily; adjust the path):
 
 ```
 30 5 * * * cd /path/to/window && .venv/bin/python -m window.run >> data/run.log 2>&1
 ```
 
-If the machine is asleep at 05:30, cron will not run it; use `launchd` or wake the Mac with
-`pmset repeat wakeorpoweron MTWRFSU 05:25:00`.
+Cron skips a run if the machine is asleep at that time.
 
 **Windows (Task Scheduler)**:
 
