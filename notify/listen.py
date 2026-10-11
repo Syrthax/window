@@ -83,12 +83,17 @@ def run(poll_seconds: int = 25) -> None:
             continue
         for u in updates:
             offset = u["update_id"] + 1
+            t0 = time.time()
             out = handle(u, owner, today.load_plan)
             if out:
                 try:
                     telegram.send(out[1], chat_id=out[0])
                 except telegram.NotifyError as e:
                     log.error("reply failed: %s", e)
+                    continue
+                sent = u["message"].get("date", t0)
+                log.info("answered %r: %.1fs after it was sent, %.1fs to build and send the reply",
+                         u["message"]["text"][:20], t0 - sent, time.time() - t0)
 
 
 def main() -> None:
