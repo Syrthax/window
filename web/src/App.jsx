@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const W = 720, H = 280, M = { t: 16, r: 16, b: 28, l: 34 };
+const W = 720, H = 280, M = { t: 16, r: 16, b: 28, l: 44 };
 const PW = W - M.l - M.r, PH = H - M.t - M.b;
 const hourOf = (hhmm) => parseInt(hhmm.slice(0, 2), 10);
 
