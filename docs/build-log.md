@@ -23,3 +23,24 @@ Decisions, numbers (MAE, latency) and fixes, newest last.
   - Train on last 30 days (720 rows): fit 0.1s, predict 4.1s, MAE 5.92 vs persistence 4.65.
 - Decision: the 60s rule is triggered by the first run, so train on the last 30 days. Caveat: the first run's fit time was inflated by the download, so full-history training may be under 60s on a warm cache. Re-time it in Task 3.
 - Early signal: with only lag features, TabPFN does NOT beat persistence at 1h (5.5-5.9 vs 4.65 MAE). Task 3 adds rolling means and weather features and compares against CAMS, so this is not a verdict yet.
+
+## Task 3: features + TabPFN forecast vs baselines
+- Files: `model/features.py` (lags 1,2,3,6,12,24 + current value, rolling means 3/6/24h, weather at target hour, hour/dow of target; time split on *target* time, last 14 days = test), `model/forecast.py` (TabPFNRegressor per horizon 1/3/6h, writes `data/eval.json`, prints markdown).
+- CORRECTION to Task 2: the smoke-test "persistence" MAE of 4.65 was wrong. The script used `lag1` (value at t-1) as persistence for a t+1 target, a 2-hour gap. Real 1h persistence MAE is 2.49. The Task 2 claim that TabPFN "does not beat persistence" was therefore unfounded.
+- Training window: with weather-valid history (1454 train rows) fit+predict is ~9-10s per horizon. The 88.6s in Task 2 was the one-time weight download, so the "train on last 30 days" fallback is unnecessary. Default is now all history (`--train-days 0`); `--train-days 30` is still available.
+- CAMS baseline is NOT obtainable. Open-Meteo's past values are the model's own analysis, i.e. the target itself (using them would be leakage, MAE 0), and `pm2_5_previous_day1` is returned empty (0 of 744 hours). Reported as null/"n/a". Replaced with two honest baselines: "yesterday" (value at t+h-24) and hour-of-day climatology. Idea for later: snapshot forecast rows daily so a true CAMS-forecast baseline exists in future runs.
+- Test set: last 14 days of targets (336 rows per horizon). Weather features are analysis values rather than past forecasts, so scores are slightly optimistic.
+- Results (MAE / RMSE in ug/m3, training on all history):
+
+| Horizon | Metric | TabPFN | Persistence | Yesterday | Climatology |
+|---|---|---|---|---|---|
+| +1h | MAE | 2.369 | 2.485 | 7.684 | 21.941 |
+| +1h | RMSE | 3.469 | 3.669 | 10.018 | 24.702 |
+| +3h | MAE | 7.608 | 6.479 | 7.684 | 21.941 |
+| +3h | RMSE | 9.81 | 8.425 | 10.018 | 24.702 |
+| +6h | MAE | 9.455 | 10.785 | 7.684 | 21.941 |
+| +6h | RMSE | 12.463 | 13.114 | 10.018 | 24.702 |
+
+- Same "yesterday"/climatology numbers across horizons are expected: the 336 test targets are identical for every h and those baselines do not depend on issue time.
+- Same run with a 30-day train window: MAE 2.694 / 7.563 / 10.478 at +1/+3/+6h, so more history helps at 1h and 6h.
+- Read: TabPFN beats persistence at +1h (-5% MAE) and +6h (-12%), loses at +3h (+17%), and loses to "yesterday" at +6h (9.46 vs 7.68). Not a clear win.

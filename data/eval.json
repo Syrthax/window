@@ -1,0 +1,75 @@
+{
+  "train_days": null,
+  "test_days": 14,
+  "results": [
+    {
+      "horizon_h": 1,
+      "n_train": 1454,
+      "n_test": 336,
+      "fit_predict_s": 9.3,
+      "tabpfn": {
+        "mae": 2.369,
+        "rmse": 3.469
+      },
+      "persistence": {
+        "mae": 2.485,
+        "rmse": 3.669
+      },
+      "yesterday": {
+        "mae": 7.684,
+        "rmse": 10.018
+      },
+      "climatology": {
+        "mae": 21.941,
+        "rmse": 24.702
+      },
+      "cams": null
+    },
+    {
+      "horizon_h": 3,
+      "n_train": 1454,
+      "n_test": 336,
+      "fit_predict_s": 9.3,
+      "tabpfn": {
+        "mae": 7.608,
+        "rmse": 9.81
+      },
+      "persistence": {
+        "mae": 6.479,
+        "rmse": 8.425
+      },
+      "yesterday": {
+        "mae": 7.684,
+        "rmse": 10.018
+      },
+      "climatology": {
+        "mae": 21.941,
+        "rmse": 24.702
+      },
+      "cams": null
+    },
+    {
+      "horizon_h": 6,
+      "n_train": 1454,
+      "n_test": 336,
+      "fit_predict_s": 9.5,
+      "tabpfn": {
+        "mae": 9.455,
+        "rmse": 12.463
+      },
+      "persistence": {
+        "mae": 10.785,
+        "rmse": 13.114
+      },
+      "yesterday": {
+        "mae": 7.684,
+        "rmse": 10.018
+      },
+      "climatology": {
+        "mae": 21.941,
+        "rmse": 24.702
+      },
+      "cams": null
+    }
+  ]
+}
