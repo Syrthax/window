@@ -114,3 +114,32 @@ def test_fallback_message_within_limit_for_long_names():
     w = tools.best_window(tools.get_forecast(make_df(), NOW)["hours"])
     msg = fallback.build(w, [{"name": "N" * 200, "shade": True, "km": 1}], "today")["message"]
     assert len(msg) <= 140
+
+
+def smoggy_df():
+    return make_df().assign(pm2_5=45.0)  # AQI ~126 all day
+
+
+def test_poor_air_adds_caution_flag():
+    w = tools.best_window(tools.get_forecast(smoggy_df(), NOW)["hours"])
+    assert w["caution"] == ["air"] and tools.best_window(tools.get_forecast(make_df(), NOW)["hours"])["caution"] == []
+
+
+def test_fallback_leads_with_caution():
+    out = planner.plan(smoggy_df(), NOW, chat=scripted("nope", "nope"), backoff=0)
+    msg = out["plan"]["message"]
+    assert out["source"] == "fallback" and msg.startswith("Best of a smoggy day") and "limit time" in msg
+    assert len(msg) <= 140
+
+
+def test_cheerful_message_rejected_under_caution(good):
+    cheerful = {**good, "message": f"Enjoy a lovely walk {good['start']}-{good['end']} at {good['place']}!"}
+    out = planner.plan(smoggy_df(), NOW, chat=scripted(cheerful, cheerful), backoff=0)
+    assert out["source"] == "fallback"
+
+
+def test_cautious_message_accepted(good):
+    w = tools.best_window(tools.get_forecast(smoggy_df(), NOW)["hours"])
+    msg = f"Best of a smoggy day: {w['start']}-{w['end']} at {good['place']}. Air is poor; sensitive people limit time."
+    out = planner.plan(smoggy_df(), NOW, chat=scripted({**good, "message": msg}), backoff=0)
+    assert out["source"] == "ollama" and out["plan"]["message"] == msg

@@ -83,6 +83,23 @@ def get_forecast(df: pd.DataFrame | None = None, now: pd.Timestamp | None = None
     return {"day": label, "date": str(rows.time.iloc[0].date()), "hours": hours}
 
 
+CAUTION_WORDS = {"air": "smoggy", "heat": "hot", "uv": "sunny", "rain": "wet"}
+
+
+def caution_flags(avg_feels_c: float, max_aqi: int, max_uv: float, max_rain_pct: float) -> list[str]:
+    """Why even the best window is not a clear 'go'. Decided here, not by the model."""
+    flags = []
+    if max_aqi > 100:
+        flags.append("air")
+    if avg_feels_c >= 35:
+        flags.append("heat")
+    if max_uv >= 8:
+        flags.append("uv")
+    if max_rain_pct >= 50:
+        flags.append("rain")
+    return flags
+
+
 def best_window(hours: list[dict], length: int = 2) -> dict:
     """Consecutive daylight hours with the highest mean score (earliest wins ties).
     Falls back to a single hour if no `length`-hour run exists."""
@@ -97,12 +114,14 @@ def best_window(hours: list[dict], length: int = 2) -> dict:
                 best = (mean, run)
         if best:
             mean, run = best
-            return {
+            win = {
                 "start": f"{run[0]['hour']:02d}:00", "end": f"{(run[-1]['hour'] + 1) % 24:02d}:00",
                 "score": round(mean, 1), "avg_feels_c": round(sum(h["feels_c"] for h in run) / n, 1),
                 "max_aqi": max(h["aqi"] for h in run), "air": aqi_label(max(h["aqi"] for h in run)), "max_rain_pct": max(h["rain_pct"] for h in run),
                 "max_uv": max(h["uv"] for h in run),
             }
+            win["caution"] = caution_flags(win["avg_feels_c"], win["max_aqi"], win["max_uv"], win["max_rain_pct"])
+            return win
     raise ValueError("no hours to build a window from")
 
 

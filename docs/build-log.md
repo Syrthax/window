@@ -82,3 +82,8 @@ Decisions, numbers (MAE, latency) and fixes, newest last.
 - Nowcast values that run: +1h 34.2, +3h 41.2, +6h 43.4 ug/m3. Because it was run in the evening, the plan is for tomorrow (06:00-08:00), whose hours are unaffected by the +1/3/6h nowcast.
 - 49 tests pass (added 8: notifier retry/backoff/4xx/token-leak/missing-creds, blend).
 - Setup done by hand: bot `@ClimateHelp_bot`, chat id captured via getUpdates after the user pressed Start. README has cron, launchd/pmset and Task Scheduler instructions and a `.env.example`.
+
+### Message wording fix (after user feedback on the first Telegram nudge)
+- Problem: the first real nudge said "visit Indira Park; air is unhealthy for sensitive groups..." which reads as an upbeat invitation with a warning buried in it, for a window whose AQI is ~129.
+- Fix: caution is decided in Python, not by the model. `tools.caution_flags()` flags the window when max AQI > 100 (air), feels-like >= 35C (heat), UV >= 8, or rain >= 50%. When flagged, the prompt requires the message to start "Best of a smoggy/hot/sunny/wet day:", then day, time, place, a caution, and bans cheerful words. The validator rejects messages that do not start that way, or that skip the air quality under an air flag, and the templated fallback leads the same way.
+- Result on 3 live runs: "Best of a smoggy day: tomorrow 06:00-08:00 at Indira Park. Air is unhealthy for sensitive groups; limit time outside." Gemma passed validation first try each time. Grammar bug found on the way ("smoggy today"), fixed. 53 tests pass.

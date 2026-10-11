@@ -61,9 +61,17 @@ def build_messages(forecast: dict, window: dict, places: list[dict]) -> list[dic
         "hours": [{k: h[k] for k in ("time", "score", "feels_c", "aqi", "air", "rain_pct", "uv")} for h in forecast["hours"]],
         "places": [{k: p[k] for k in ("name", "type", "shade", "km")} for p in places],
     }
+    caution = window.get("caution", [])
+    tone = (
+        "IMPORTANT: even this best window is poor (" + ", ".join(
+            f"{c} ({tools.CAUTION_WORDS[c]})" for c in caution) + "). Start the message with "
+        f"'Best of a {' and '.join(tools.CAUTION_WORDS[c] for c in caution[:2])} day:' then say the day ('{forecast['day']}'), the time and the place, "
+        "and add a short caution (for air: sensitive people should limit time outside or wear a mask). "
+        "Never use cheerful words such as enjoy, perfect, ideal, great or pleasant. "
+    ) if caution else ""
     user = (
         f"DATA:\n{json.dumps(data)}\n\n"
-        f"The window {window['start']}-{window['end']} is already chosen; copy start and end exactly. "
+        f"The window {window['start']}-{window['end']} is already chosen; copy start and end exactly. {tone}"
         "Pick ONE place, copying its name exactly from places (prefer shade when hot or high UV). "
         "activity: 2-4 words. "
         f"message: ONE short sentence of about 100 characters (hard limit 140), must say the day ('{forecast['day']}'), the time range and the place; "
@@ -86,6 +94,11 @@ def validate(obj: object, window: dict, place_names: set[str]) -> list[str]:
         errs.append(f"start/end must be exactly {window['start']} and {window['end']}")
     if obj["place"] not in place_names:
         errs.append(f"place must be one of {sorted(place_names)}")
+    caution = window.get("caution", [])
+    if caution and not obj["message"].lower().startswith("best of a"):
+        errs.append("message must start with 'Best of a ...' because conditions are poor")
+    if "air" in caution and "air" not in obj["message"].lower().replace("sensitive", ""):
+        errs.append("message must mention the air quality")
     if len(obj["message"]) > fallback.MAX_MESSAGE:
         errs.append(f"message is {len(obj['message'])} chars, max {fallback.MAX_MESSAGE}")
     return errs
