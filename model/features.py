@@ -31,9 +31,10 @@ def load_history(location: str = "hyderabad", path: Path = DATA / "hourly.csv") 
     return df.asfreq("h")
 
 
-def build(df: pd.DataFrame, h: int) -> pd.DataFrame:
+def build(df: pd.DataFrame, h: int, with_target: bool = True) -> pd.DataFrame:
     """Feature matrix indexed by issue time t, with `y` and `target_time` columns.
-    Rows with any missing feature or target are dropped."""
+    Rows with any missing feature or target are dropped. With `with_target=False`
+    (inference) `y` is omitted and only features must be complete."""
     pm = df["pm2_5"]
     X = pd.DataFrame(index=df.index)
     X["pm2_5_now"] = pm
@@ -46,8 +47,10 @@ def build(df: pd.DataFrame, h: int) -> pd.DataFrame:
     tt = X.index + pd.Timedelta(hours=h)
     X["hour"] = tt.hour
     X["dow"] = tt.dayofweek
-    X["y"] = pm.shift(-h)
     X["target_time"] = tt
+    if not with_target:
+        return X.dropna()
+    X["y"] = pm.shift(-h)
     return X.dropna()
 
 
@@ -65,3 +68,11 @@ def split(X: pd.DataFrame, test_days: int = 14, train_days: int | None = 30):
 
 def feature_cols(X: pd.DataFrame) -> list[str]:
     return [c for c in X.columns if c not in ("y", "target_time")]
+
+
+def latest_issue_row(df_all: pd.DataFrame, h: int) -> pd.DataFrame:
+    """Feature row for the most recent *observed* hour, for predicting t+h.
+    `df_all` must include forecast rows so weather at t+h is present."""
+    df = df_all.set_index("time").sort_index().asfreq("h")
+    t = df.index[~df["is_forecast"].fillna(True).astype(bool)].max()
+    return build(df, h, with_target=False).loc[[t]]

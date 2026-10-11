@@ -73,3 +73,12 @@ Decisions, numbers (MAE, latency) and fixes, newest last.
   3. That change made messages long: 231 then 144 chars, both rejected, so 3/3 runs fell back. Fixed by asking for "about 100 characters (hard limit 140)"; the 140 validator is unchanged. Afterwards 3 of 4 runs passed (one needed the fallback).
 - The validator did its job: wrong-length output never reached the user; the fallback produced a correct templated plan every time.
 - Honest note for the write-up: tomorrow's best window (06:00-08:00) still has AQI ~129 ("unhealthy for sensitive groups"); the message says so rather than hiding it.
+
+## Task 6: Telegram + `window.run`
+- `notify/telegram.py`: plain-text `sendMessage` with 15s timeout, retries on network errors, 429 (honours `retry_after`) and 5xx with exponential backoff, immediate failure on other 4xx. Errors never include the URL because it contains the bot token (tested). `--find-chat-id` reads `getUpdates` and saves the id to `.env`.
+- `model/predict.py`: one TabPFN per horizon trained on all history, predicts from the latest observed hour. The three predicted hours are blended 50/50 with the CAMS forecast rather than replacing it: offline TabPFN only beats persistence at +1h/+6h and no true CAMS baseline exists (see Task 3), so replacing would be unjustified. Other hours keep the CAMS forecast. Added `latest_issue_row()` and `with_target=False` to `model/features.py` for inference.
+- `window/run.py`: ingest -> predict -> score+plan -> notify, with a `--dry-run`, `--offline` and `--no-tabpfn`. Degradation: ingest failure uses cached CSV; TabPFN failure is logged and skipped; Ollama failure uses the template; Telegram failure still prints the message and exits 2. Writes `data/last_plan.json` (gitignored).
+- Live run 2026-10-11 19:37 IST: ingest 2.0s, TabPFN nowcast 42.1s (3 fits at 12-14s each, CPU), planner 4.2s (warm Gemma), Telegram send ~1s. Total about 50s. Message delivered (124 chars).
+- Nowcast values that run: +1h 34.2, +3h 41.2, +6h 43.4 ug/m3. Because it was run in the evening, the plan is for tomorrow (06:00-08:00), whose hours are unaffected by the +1/3/6h nowcast.
+- 49 tests pass (added 8: notifier retry/backoff/4xx/token-leak/missing-creds, blend).
+- Setup done by hand: bot `@ClimateHelp_bot`, chat id captured via getUpdates after the user pressed Start. README has cron, launchd/pmset and Task Scheduler instructions and a `.env.example`.

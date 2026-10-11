@@ -4,3 +4,4 @@ data/raw/
 *.pyc
 .env
 node_modules/
+data/last_plan.json
